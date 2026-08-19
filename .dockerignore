@@ -17,8 +17,7 @@ client/dist
 **/__pycache__
 **/*.pyc
 
-# 运行时数据（镜像内由 volume 持久化）
-server/uploads
+# 运行时数据（镜像内由 volume 持久化；uploads 需保留目录本身用于 COPY）
 server/data
 ai/chroma_db/data
 *.db

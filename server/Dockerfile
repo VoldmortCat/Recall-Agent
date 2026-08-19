@@ -1,6 +1,12 @@
 # ========== Stage 1：构建前端（web/dist） ==========
-FROM node:20-alpine AS web-builder
+# 基础镜像地址可覆盖：docker build --build-arg REGISTRY=docker.io/library ...
+ARG REGISTRY=docker.m.daocloud.io/library
+FROM ${REGISTRY}/node:20-alpine AS web-builder
 WORKDIR /src
+
+# 国内镜像源（npm 包 + Prisma 引擎）
+ENV npm_config_registry=https://registry.npmmirror.com
+ENV PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 
 COPY web/package*.json ./web/
 RUN cd web && npm install
@@ -9,9 +15,12 @@ COPY web ./web
 RUN cd web && npm run build && ls dist
 
 # ========== Stage 2：后端运行环境 ==========
-FROM node:20-alpine AS runner
+FROM ${REGISTRY}/node:20-alpine AS runner
 
 WORKDIR /app
+
+ENV npm_config_registry=https://registry.npmmirror.com
+ENV PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 
 # Prisma 引擎在 Alpine(musl) 下需要 openssl
 RUN apk add --no-cache openssl
