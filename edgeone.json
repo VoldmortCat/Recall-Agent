@@ -1,0 +1,12 @@
+{
+  "outputDirectory": "web/dist",
+  "cloudFunctions": {
+    "nodeVersion": "20.18.0"
+  },
+  "rewrites": [
+    {
+      "source": "/*",
+      "destination": "/index.html"
+    }
+  ]
+}

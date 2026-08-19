@@ -8,6 +8,9 @@
     "dev:server": "cd server && npm run dev",
     "dev:web": "cd web && npm install && npm run dev",
     "build:web": "cd web && npm install && npm run build",
+    "build": "npm run build:web",
+    "prebuild": "npx prisma generate --schema=server/prisma/schema.prisma",
+    "postinstall": "cd web && npm install",
     "install:all": "cd server && npm install && cd ../web && npm install",
     "setup:ai": "python -m venv ai/ocr/.venv && ai/ocr/.venv/Scripts/python -m pip install -r ai/ocr/requirements.txt && ai/ocr/.venv/Scripts/python -m pip install flask chromadb numpy reportlab",
     "db:init": "cd server && npx prisma generate && npx prisma db push",
@@ -15,6 +18,18 @@
     "ai:ocr": "cd ai/ocr && .\\.venv\\Scripts\\python ocr_service.py",
     "ai:chroma": "cd ai/chroma_db && ..\\ocr\\.venv\\Scripts\\python chroma_service.py",
     "ai:pdf": "cd ai/pdf && ..\\ocr\\.venv\\Scripts\\python export_pdf.py"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "redis": "^4.7.0",
+    "uuid": "^10.0.0",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

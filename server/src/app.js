@@ -81,12 +81,15 @@ async function backfillSerialNumbers() {
   }
 }
 
-app.listen(config.port, async () => {
-  console.log(`[Recall] Server running on port ${config.port}`);
-  console.log(`[Recall] Environment: ${config.nodeEnv}`);
-  // 启动任务：编号回填 + RAG 索引重建（均不阻塞对外服务）
-  await backfillSerialNumbers();
-  chromaService.reindexAll();
-});
+// 直接运行时才启动 HTTP Server（被 EdgeOne Cloud Functions 导入时跳过）
+if (require.main === module) {
+  app.listen(config.port, async () => {
+    console.log(`[Recall] Server running on port ${config.port}`);
+    console.log(`[Recall] Environment: ${config.nodeEnv}`);
+    // 启动任务：编号回填 + RAG 索引重建（均不阻塞对外服务）
+    await backfillSerialNumbers();
+    chromaService.reindexAll();
+  });
+}
 
 module.exports = app;
