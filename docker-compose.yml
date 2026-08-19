@@ -1,78 +1,50 @@
-version: "3.8"
-
+# Recall — AI 智能错题本 · 一键部署
+# 用法：docker compose up -d --build   →  访问 http://服务器IP:3000
 services:
-  # ------ 后端服务 ------
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     ports:
       - "3000:3000"
+    env_file:
+      - server/.env
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://recall:recall@postgres:5432/recall
-      - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET=recall-jwt-secret-dev
-      - OCR_SERVICE_URL=http://ocr:5000/ocr
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      NODE_ENV: production
+      # SQLite 数据文件持久化到 volume（挂载 /app/data/db）
+      DATABASE_URL: file:/app/data/db/dev.db
+      OCR_SERVICE_URL: http://ocr:5000/ocr
+      CHROMA_SERVICE_URL: http://chroma:5001
+      PDF_SERVICE_URL: http://pdf:5002/generate
     volumes:
-      - ./server/uploads:/app/uploads
-      - ./server/.env:/app/.env
-    restart: unless-stopped
-
-  # ------ 前端服务 ------
-  client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    ports:
-      - "5173:5173"
+      - db_data:/app/data/db          # SQLite 数据库
+      - uploads_data:/app/server/uploads   # 错题图片
+      - server_data:/app/server/data       # 运行时设置 settings.json
     depends_on:
-      - server
+      - ocr
+      - chroma
+      - pdf
     restart: unless-stopped
 
-  # ------ OCR 识别服务 ------
   ocr:
-    build:
-      context: ./ai/ocr
-      dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
-    environment:
-      - OCR_PORT=5000
+    build: ./ai/ocr
     restart: unless-stopped
 
-  # ------ PostgreSQL ------
-  postgres:
-    image: postgres:16-alpine
+  chroma:
+    build: ./ai/chroma_db
     environment:
-      POSTGRES_USER: recall
-      POSTGRES_PASSWORD: recall
-      POSTGRES_DB: recall
-    ports:
-      - "5432:5432"
+      # 向量库持久化目录（源码默认 data/chroma，容器内改为 /app/data）
+      CHROMA_PERSIST_DIR: /app/data/chroma
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U recall"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - chroma_data:/app/data
     restart: unless-stopped
 
-  # ------ Redis ------
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+  pdf:
+    build: ./ai/pdf
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+  db_data:
+  uploads_data:
+  server_data:
+  chroma_data:

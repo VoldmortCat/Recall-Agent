@@ -1,14 +1,41 @@
-FROM node:20-alpine
+# ========== Stage 1：构建前端（web/dist） ==========
+FROM node:20-alpine AS web-builder
+WORKDIR /src
+
+COPY web/package*.json ./web/
+RUN cd web && npm install
+
+COPY web ./web
+RUN cd web && npm run build && ls dist
+
+# ========== Stage 2：后端运行环境 ==========
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-COPY package.json .
-RUN npm install --production
+# Prisma 引擎在 Alpine(musl) 下需要 openssl
+RUN apk add --no-cache openssl
 
-COPY . .
+# 后端依赖（根 package.json 聚合了后端全部依赖）
+COPY package*.json ./
+COPY server/package*.json ./server/
+RUN npm install --omit=dev --ignore-scripts
 
-RUN npx prisma generate
+# Prisma Client 生成（需要 schema）
+COPY server/prisma ./server/prisma
+RUN npx prisma generate --schema=server/prisma/schema.prisma
 
+# 后端源码
+COPY server/src ./server/src
+COPY server/uploads ./server/uploads
+# server/data（运行时设置）由 compose volume 挂载自动创建
+
+# 前端构建产物（生产模式下由后端同源托管）
+COPY --from=web-builder /src/web/dist ./web/dist
+
+ENV NODE_ENV=production
+ENV PORT=3000
 EXPOSE 3000
 
-CMD ["node", "src/app.js"]
+# 首次启动自动建表（prisma db push），再启动后端
+CMD ["sh", "-c", "npx prisma db push --schema=server/prisma/schema.prisma && node server/src/app.js"]

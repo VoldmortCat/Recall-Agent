@@ -18,12 +18,14 @@ export function AuthProvider({ children }) {
 
   const login = async (phone, code) => {
     const r = await authApi.login(phone, code);
+    if (!r?.data?.token) throw new Error(r?.message || '登录失败：后端无响应');
     setToken(r.data.token);
     setUser(r.data.user);
     return r.data;
   };
   const register = async (phone) => {
     const r = await authApi.register(phone);
+    if (!r?.data?.token) throw new Error(r?.message || '注册失败：后端无响应');
     setToken(r.data.token);
     setUser(r.data.user);
     return r.data;

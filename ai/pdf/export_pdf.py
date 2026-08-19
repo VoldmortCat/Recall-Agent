@@ -23,10 +23,12 @@ try:
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    # 注册中文字体（优先微软雅黑，回退宋体）
+    # 注册中文字体（优先微软雅黑，回退宋体 / Linux Noto CJK）
     _CN_FONT = None
     _CN_FONT_BOLD = None
     _FONT_SEARCH_PATHS = [
+        ("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", "NotoSansCJK-Bold"),
+        ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", "NotoSansCJK-Regular"),
         ("C:/Windows/Fonts/msyh.ttc", "msyh"),
         ("C:/Windows/Fonts/msyhbd.ttc", "msyhbd"),
         ("C:/Windows/Fonts/simsun.ttc", "simsun"),

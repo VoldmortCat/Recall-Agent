@@ -17,7 +17,11 @@
     "setup": "npm run install:all && npm run db:init",
     "ai:ocr": "cd ai/ocr && .\\.venv\\Scripts\\python ocr_service.py",
     "ai:chroma": "cd ai/chroma_db && ..\\ocr\\.venv\\Scripts\\python chroma_service.py",
-    "ai:pdf": "cd ai/pdf && ..\\ocr\\.venv\\Scripts\\python export_pdf.py"
+    "ai:pdf": "cd ai/pdf && ..\\ocr\\.venv\\Scripts\\python export_pdf.py",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "deploy": "bash deploy.sh"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

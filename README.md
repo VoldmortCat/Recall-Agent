@@ -12,6 +12,7 @@
 - [架构总览](#架构总览)
 - [技术栈](#技术栈)
 - [快速开始](#快速开始)
+- [云服务器一键部署](#云服务器一键部署)
 - [AI 配置](#ai-配置)
 - [数据隔离与安全](#数据隔离与安全)
 - [降级策略](#降级策略)
@@ -113,6 +114,56 @@ npm run dev:all
 npm run db:init   # prisma generate + prisma db push
 ```
 
+## 云服务器一键部署
+
+项目内置 Docker 编排，**一条命令在任意 Linux 服务器上跑起全栈**（Web + 后端 + OCR + 向量检索 + PDF 导出），所有数据通过 volume 持久化，无需手动配置任何环境变量。
+
+### 前置条件
+
+- 一台 Linux 云服务器（腾讯云轻量应用服务器即可，2C4G 起步）
+- 安全组/防火墙放行 **3000** 端口（腾讯云控制台 → 防火墙 → 添加规则）
+- 服务器安装 Git 与 Docker（`deploy.sh` 会自动安装 Docker，也可手动装：`curl -fsSL https://get.docker.com | sh`）
+
+### 部署步骤（共 2 步）
+
+```bash
+# 1. 把项目拉到服务器（GitHub 或直接上传均可）
+git clone <你的仓库地址> recall && cd recall
+
+# 2. 一键构建 + 启动全部服务（首次构建需下载依赖，约几分钟）
+bash deploy.sh
+```
+
+部署完成后访问 `http://服务器IP:3000`，健康检查 `http://服务器IP:3000/health`。
+
+> 无 `server/.env` 也能运行（AI 走 demo 降级模式）。若需接入真实 AI 模型：部署后在服务器上创建 `server/.env`（参考 `server/.env.example` 填写 `DEEPSEEK_API_KEY` 等），再执行 `docker compose up -d --build` 生效。该文件含密钥，已被 `.gitignore` 排除，不会随代码提交。
+
+### 常用运维命令
+
+```bash
+docker compose ps                 # 查看 4 个服务状态
+docker compose logs -f            # 查看全部日志
+docker compose logs -f server     # 只看后端日志
+docker compose down               # 停止（数据不会丢）
+docker compose up -d --build      # 代码更新后重新构建启动
+```
+
+### 数据持久化
+
+| Volume | 内容 |
+|---|---|
+| `db_data` | SQLite 数据库（错题/用户/会话等全部业务数据） |
+| `uploads_data` | 上传的错题图片 |
+| `server_data` | 运行时设置（AI 配置等） |
+| `chroma_data` | 向量库与 BM25 索引（RAG 检索） |
+
+容器删除/重建数据不丢失；备份整目录或执行 `docker compose down && tar` 打包 volume 即可迁移。
+
+### 绑定域名（可选）
+
+- 在腾讯云 DNSPod 把域名解析到服务器 IP，然后在 EdgeOne / 云服务器安全组中放行 80/443
+- 可用 Nginx 反代或腾讯云 EdgeOne 接入：`http://IP:3000` 为源站，域名访问时自动转发并启用 HTTPS
+
 ## AI 配置
 
 项目无需任何 API Key 即可运行（无 Key 时 AI 功能返回“确定性 demo 兜底”）。接入真实模型时，可在 Web 端「设置」页运行时配置，或通过环境变量预设：
@@ -153,8 +204,10 @@ npm run db:init   # prisma generate + prisma db push
 
 ```
 .
-├── package.json              # 根脚本：dev / dev:all / setup / setup:ai
-├── server/                   # Node.js 主后端
+├── package.json              # 根脚本：dev / dev:all / setup / setup:ai / docker:*
+├── docker-compose.yml        # 一键部署编排（Web+后端+3 微服务，4 个数据卷）
+├── deploy.sh                 # Linux 服务器一键部署脚本（自动装 Docker）
+├── server/                   # Node.js 主后端（含 Dockerfile，生产模式同源托管前端）
 │   ├── prisma/               # 数据模型（schema.prisma）与数据库
 │   ├── src/routes/           # API 路由（auth/mistakes/review/analysis/chat/...）
 │   ├── src/services/         # 业务服务（aiService / chromaService / exportService ...）

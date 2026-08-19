@@ -45,6 +45,16 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0' });
 });
 
+// 生产模式：同源托管前端构建产物（web/dist），一条命令部署全栈
+if (config.nodeEnv === 'production') {
+  const distDir = path.join(__dirname, '../../web/dist');
+  app.use(express.static(distDir));
+  // SPA 回退：非 API/上传/健康检查 的路径一律返回 index.html
+  app.get(/^(?!\/(api|uploads|health))/, (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+}
+
 // 全局错误处理
 app.use((err, req, res, next) => {
   console.error('[Error]', err);

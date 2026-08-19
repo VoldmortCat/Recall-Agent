@@ -1,0 +1,32 @@
+# Git / VCS
+.git
+.gitignore
+
+# Node
+node_modules
+**/node_modules
+**/package-lock.json
+npm-debug.log*
+
+# 前端构建产物（镜像内重新构建）
+web/dist
+client/dist
+
+# Python
+**/.venv
+**/__pycache__
+**/*.pyc
+
+# 运行时数据（镜像内由 volume 持久化）
+server/uploads
+server/data
+ai/chroma_db/data
+*.db
+
+# 本地环境 / 密钥
+.env
+!server/.env.example
+
+# 系统
+.DS_Store
+Thumbs.db
