@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- 用户 ----------
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  nickname  String?
+  avatarUrl String?  @map("avatar_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  mistakes      Mistake[]
+  categories    Category[]
+  chatSessions  ChatSession[]
+  reviewPlans   ReviewPlan[]
+  reviewLogs    ReviewLog[]
+  userKnowledge UserKnowledge[]
+
+  @@map("users")
+}
+
+// ---------- 错题分类（用户自建文件夹） ----------
+model Category {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  color     String   @default("#667eea")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id])
+  mistakes Mistake[]
+
+  @@index([userId])
+  @@map("categories")
+}
+
+// ---------- 错题 ----------
+model Mistake {
+  id              String   @id @default(uuid())
+  serialNo        Int      @default(0) @map("serial_no")  // 用户维度的自增序号
+  userId          String   @map("user_id")
+  subject         String
+  knowledgePoints String?  @map("knowledge_points")  // JSON 字符串
+  errorType       String?  @map("error_type")
+  difficulty      String?
+  originalImage   String?  @map("original_image")
+  ocrText         String?  @map("ocr_text")
+  correctAnswer   String?  @map("correct_answer")
+  userAnswer      String?  @map("user_answer")
+  analysis        String?
+  source          String?  @map("source") // 拍照录入 / 手动录入 / 批量导入
+  masteryStatus   String   @default("pending") @map("mastery_status")
+  confidence      Float?
+  isCorrected     Boolean? @default(false) @map("is_corrected")
+  categoryId      String?  @map("category_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id])
+  category    Category?    @relation(fields: [categoryId], references: [id])
+  images      MistakeImage[]
+  reviewPlan  ReviewPlan?
+  reviewLogs  ReviewLog[]
+
+  @@index([userId])
+  @@index([subject])
+  @@index([masteryStatus])
+  @@index([userId, serialNo])
+  @@map("mistakes")
+}
+
+// ---------- 错题图片 ----------
+model MistakeImage {
+  id        String   @id @default(uuid())
+  mistakeId String   @map("mistake_id")
+  imageUrl  String   @map("image_url")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  mistake Mistake @relation(fields: [mistakeId], references: [id], onDelete: Cascade)
+
+  @@index([mistakeId])
+  @@map("mistake_images")
+}
+
+// ---------- 知识图谱节点 ----------
+model KnowledgeNode {
+  id         String   @id @default(uuid())
+  name       String
+  subject    String
+  gradeLevel String?  @map("grade_level")
+  parentId   String?  @map("parent_id")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  parent   KnowledgeNode?  @relation("KnowledgeTree", fields: [parentId], references: [id])
+  children KnowledgeNode[] @relation("KnowledgeTree")
+  userKnowledge UserKnowledge[]
+
+  @@index([subject])
+  @@map("knowledge_nodes")
+}
+
+// ---------- 用户-知识点关联 ----------
+model UserKnowledge {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  knowledgeId   String    @map("knowledge_id")
+  mistakeCount  Int       @default(0) @map("mistake_count")
+  masteryScore  Float     @default(1.0) @map("mastery_score")
+  lastMistakeAt DateTime? @map("last_mistake_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user      User           @relation(fields: [userId], references: [id])
+  knowledge KnowledgeNode  @relation(fields: [knowledgeId], references: [id])
+
+  @@unique([userId, knowledgeId])
+  @@index([userId])
+  @@map("user_knowledge")
+}
+
+// ---------- 复习计划 ----------
+model ReviewPlan {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  mistakeId      String   @unique @map("mistake_id")
+  repetitions    Int      @default(0)
+  interval       Int      @default(1)
+  easeFactor     Float    @default(1.3) @map("ease_factor")
+  nextReviewDate DateTime @map("next_review_date")
+  lastQuality    Int?     @map("last_quality")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  mistake Mistake @relation(fields: [mistakeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([nextReviewDate])
+  @@map("review_plans")
+}
+
+// ---------- AI 答疑会话 ----------
+model ChatSession {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String   @default("新对话")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id])
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@map("chat_sessions")
+}
+
+// ---------- AI 对话消息 ----------
+model ChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
+  role      String   // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
+// ---------- 复习记录 ----------
+model ReviewLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  mistakeId  String   @map("mistake_id")
+  quality    Int      // 0=忘记, 1=模糊, 2=记得
+  reviewedAt DateTime @default(now()) @map("reviewed_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  mistake Mistake @relation(fields: [mistakeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("review_logs")
+}

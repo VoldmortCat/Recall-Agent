@@ -1,0 +1,4 @@
+flask>=3.0.0
+requests>=2.31.0
+# 真实 OCR（含中文模型，onnxruntime CPU 推理，离线可用）
+rapidocr_onnxruntime>=1.3.20
